@@ -1,0 +1,50 @@
+# set the env to prod for production
+# set the env to dev for development
+env : prod
+# --------------------------------------------------
+
+# PROD PROPERTIES
+prod:
+  server:
+    port: 9255
+    
+  db:
+    host: postgresql.authnull-io.svc.cluster.local
+    port: 5432
+    user: kloudone
+    password: authnull@kloudone@2007
+    name: authnull_dev
+    schema: did
+# ------------------------------------------------------
+
+#DEV PROPERTIES
+dev:
+  server:
+    port: 9255
+
+  db:
+    host: postgresql.authnull-io.svc.cluster.local
+    port: 5432
+    user: kloudone
+    password: authnull@kloudone@2007
+    name: development
+    schema: did
+
+# ------------------------------------------------------
+
+#VERIFY PROPERTIES
+verify:
+  server:
+    port: 9255
+    
+  db:
+    host: localhost
+    port: 7000
+    #host: postgresql.authnull-io.svc.cluster.local
+    #port: 5432
+    user: kloudone
+    password: authnull@kloudone@2007
+    name: authnull_dev
+    schema: did
+    
+# ------------------------------------------------------
