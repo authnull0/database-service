@@ -6,8 +6,8 @@ type DbSyncRequest struct {
 	Databasetype string `json:"databaseType"`
 	DatabaseName string `json:"databaseName"`
 	TableName    string `json:"tableName"`
-	Host         string `json:host`
-	Port         string `json:port`
+	Host         string `json:"host"`
+	Port         string `json:"port"`
 	Status       string `json:"status"`
 }
 
