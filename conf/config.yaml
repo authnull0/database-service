@@ -6,7 +6,7 @@ env : prod
 # PROD PROPERTIES
 prod:
   server:
-    port: 9255
+    port: 9234
     
   db:
     host: postgresql.authnull-io.svc.cluster.local
@@ -20,7 +20,7 @@ prod:
 #DEV PROPERTIES
 dev:
   server:
-    port: 9255
+    port: 9234
 
   db:
     host: postgresql.authnull-io.svc.cluster.local
@@ -35,7 +35,7 @@ dev:
 #VERIFY PROPERTIES
 verify:
   server:
-    port: 9255
+    port: 9234
     
   db:
     host: localhost
