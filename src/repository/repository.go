@@ -35,15 +35,15 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 		TenantId:     req.TenantID,
 		DatabaseType: req.Databasetype,
 		DatabaseName: req.DatabaseName,
-		Table:        req.TableName,
-		Host:         req.Host,
-		Port:         req.Port,
-		Status:       req.Status,
-		CreatedAt:    time.Now().Unix(),
+		//Table:        req.TableName,
+		Host:      req.Host,
+		Port:      req.Port,
+		Status:    req.Status,
+		CreatedAt: time.Now().Unix(),
 	}
 
 	// Insert the record into the db_synchronization table
-	if err := orgDb.Table("db_synchronization").Create(&dbSync).Error; err != nil {
+	if err := orgDb.Table("did.db_synchronization").Create(&dbSync).Error; err != nil {
 		log.Default().Println("Error while inserting into db_synchronization:", err)
 		return dto.DbSyncResponse{
 			Code:    500,
@@ -76,7 +76,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 
 	// Step 1: Find id in db_synchronization
 	var dbSync models.DbSynchronization
-	err = orgDb.Table("db_synchronization").Where("org_id = ? AND tenant_id = ? AND database_name = ?",
+	err = orgDb.Table("did.db_synchronization").Where("org_id = ? AND tenant_id = ? AND db_name = ?",
 		req.OrgID, req.TenantID, req.DatabaseName).First(&dbSync).Error
 	if err != nil {
 		log.Default().Println("Error while fetching from db_synchronization:", err)
@@ -93,11 +93,11 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 
 		DatabaseId: dbSync.ID, // Using the ID from db_synchronization as database_id
 		UserName:   req.UserName,
-		Status:     dbSync.Host,
+		Status:     dbSync.Status,
 		CreatedAt:  time.Now().Unix(),
 	}
 
-	if err := orgDb.Table("db_user").Create(&dbUser).Error; err != nil {
+	if err := orgDb.Table("did.db_user").Create(&dbUser).Error; err != nil {
 		log.Default().Println("Error while inserting into db_user:", err)
 		return dto.DbUserResponse{
 			Code:    500,
@@ -129,7 +129,7 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 
 	// Step 1: Find  table_id
 	var dbSync models.DbSynchronization
-	err = orgDb.Table("db_synchronization").Where("org_id = ? AND tenant_id = ? AND database_name = ?",
+	err = orgDb.Table("did.db_synchronization").Where("org_id = ? AND tenant_id = ? AND db_name = ?",
 		req.OrgID, req.TenantID, req.DatabaseName).First(&dbSync).Error
 	if err != nil {
 		log.Default().Println("Error while fetching from db_synchronization:", err)
@@ -142,8 +142,8 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 
 	// Step 2: Find the relevant entry in db_user (for user_id)
 	var dbUser models.DbUser
-	err = orgDb.Table("db_user").Where("org_id = ? AND tenant_id = ? AND database_name = ? AND user = ?",
-		req.OrgID, req.TenantID, req.DatabaseName, req.UserName).First(&dbUser).Error
+	err = orgDb.Table("did.db_user").Where("org_id = ? AND tenant_id = ? AND user_name = ?",
+		req.OrgID, req.TenantID, req.UserName).First(&dbUser).Error
 	if err != nil {
 		log.Default().Println("Error while fetching from db_user:", err)
 		return dto.DbPrivilegeResponse{
@@ -162,7 +162,7 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 		CreatedAt:  time.Now().Unix(),
 	}
 
-	if err := orgDb.Table("user_privilege").Create(&userPrivilege).Error; err != nil {
+	if err := orgDb.Table("did.db_privilege").Create(&userPrivilege).Error; err != nil {
 		log.Default().Println("Error while inserting into user_privilege:", err)
 		return dto.DbPrivilegeResponse{
 			Code:    500,
@@ -197,7 +197,7 @@ func (s *DbRepository) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, 
 
 	for _, filter := range req.Filters {
 		if filter.FilterType == "Database" {
-			query = query.Where("databse_name = ?", filter.FilterValue)
+			query = query.Where("db_name = ?", filter.FilterValue)
 		}
 	}
 
@@ -259,15 +259,17 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 	var listUserPrivilege []models.DbUserPrivilege
 
 	query := orgDb.Table("did.db_user AS u").
-		Select("s.db_name, s.host, u.user_name, p.previlege, s.cretaed_at").
+		Select("s.org_id, s.tenant_id, s.db_name, u.user_name, s.host, s.status, p.privilege, u.created_at").
 		Joins("LEFT JOIN did.db_synchronization AS s ON u.db_id = s.id").
-		Joins("LEFT JOIN did.db_previleges AS p ON u.id = p.user_id").
+		Joins("LEFT JOIN did.db_privilege AS p ON u.id = p.user_id").
 		Where("u.org_id = ? AND u.tenant_id = ?", req.OrgID, req.TenantID).
 		Find(&listUserPrivilege)
 
+	log.Default().Printf("ListUserPrivilege: %v", listUserPrivilege)
+
 	for _, filter := range req.Filters {
 		if filter.FilterType == "Database" {
-			query = query.Where("s.databse_name = ?", filter.FilterValue)
+			query = query.Where("s.db_name = ?", filter.FilterValue)
 		}
 	}
 	for _, filter := range req.Filters {
