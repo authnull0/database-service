@@ -2,6 +2,7 @@ package repository
 
 import (
 	"log"
+	"time"
 
 	"github.com/authnull0/database-service/src/db"
 	"github.com/authnull0/database-service/src/models"
@@ -35,7 +36,10 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 		DatabaseType: req.Databasetype,
 		DatabaseName: req.DatabaseName,
 		Table:        req.TableName,
+		Host:         req.Host,
+		Port:         req.Port,
 		Status:       req.Status,
+		CreatedAt:    time.Now().Unix(),
 	}
 
 	// Insert the record into the db_synchronization table
@@ -87,8 +91,9 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 		OrgId:    req.OrgID,
 		TenantId: req.TenantID,
 
-		TableId:  dbSync.ID, // Using the ID from db_synchronization as table_id
-		UserName: req.UserName,
+		TableId:   dbSync.ID, // Using the ID from db_synchronization as table_id
+		UserName:  req.UserName,
+		CreatedAt: time.Now().Unix(),
 	}
 
 	if err := orgDb.Table("db_user").Create(&dbUser).Error; err != nil {
@@ -153,6 +158,7 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 		UserId:    dbUser.ID, // User ID from db_user
 		TableId:   dbSync.ID, // Table ID from db_synchronization
 		Privilege: req.Privilege,
+		CreatedAt: time.Now().Unix(),
 	}
 
 	if err := orgDb.Table("user_privilege").Create(&userPrivilege).Error; err != nil {
@@ -168,5 +174,70 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 		Code:    200,
 		Status:  "Success",
 		Message: "Privilege details inserted successfully into user_privilege",
+	}, nil
+}
+
+func (s *DbRepository) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, error) {
+
+	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
+	if err != nil {
+		return dto.ListDbResponse{
+			Code:    500,
+			Status:  "Internal Server Error",
+			Message: "Error while fetching organization",
+		}, err
+	}
+	log.Default().Println("DB Name: ", dbName)
+
+	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
+
+	var listDbSync []models.DbSynchronization
+	query := orgDb.Table("did.db_synchronization").Where("org_id = ? AND tenant_id = ?", req.OrgID, req.TenantID).Find(&listDbSync)
+
+	for _, filter := range req.Filters {
+		if filter.FilterType == "Database" {
+			query = query.Where("databse_name = ?", filter.FilterValue)
+		}
+	}
+
+	for _, filter := range req.Filters {
+		if filter.FilterType == "Status" {
+			query = query.Where("status = ?", filter.FilterValue)
+		}
+	}
+
+	var totalCount int64
+	if err := query.Count(&totalCount).Error; err != nil {
+		log.Printf("%s", err)
+	}
+
+	offset := (req.PageId - 1) * req.Limit
+	totalPages := (totalCount + int64(req.Limit) - 1) / int64(req.Limit)
+
+	// Fetch logs with limit and offset
+	if err := query.Offset(offset).Limit(req.Limit).Find(&listDbSync).Error; err != nil {
+		log.Default().Println("Error while fetching logs from agent_logs:", err)
+		return dto.ListDbResponse{
+			Code:      500,
+			Status:    "Internal Server Error",
+			Message:   "Error while fetching Windows Agent logs",
+			RequestId: req.RequestId,
+			Limit:     req.Limit,
+			PageId:    req.PageId,
+		}, err
+	}
+
+	log.Default().Printf("Total count %d", totalCount)
+
+	return dto.ListDbResponse{
+		Code:       200,
+		Status:     "Success",
+		Message:    "Agent Logs fetched successfully",
+		Data:       listDbSync,
+		RequestId:  req.RequestId,
+		Limit:      req.Limit,
+		PageId:     req.PageId,
+		TotalPages: int(totalPages),
+		TotalCount: totalCount,
 	}, nil
 }

@@ -6,6 +6,8 @@ type DbSyncRequest struct {
 	Databasetype string `json:"databaseType"`
 	DatabaseName string `json:"databaseName"`
 	TableName    string `json:"tableName"`
+	Host         string `json:host`
+	Port         string `json:port`
 	Status       string `json:"status"`
 }
 
@@ -44,4 +46,30 @@ type DbPrivilegeResponse struct {
 	Code    int    `json:"code"`
 	Status  string `json:"status"`
 	Message string `json:"message"`
+}
+
+type ListDbRequest struct {
+	OrgID    int `json:"orgId"`
+	TenantID int `json:"tenantId"`
+	//LogType    string   `json:"logType"`
+	Filters   []Filter `json:"filters"`
+	RequestId string   `json:"requestId"`
+	Limit     int      `json:"limit"`
+	PageId    int      `json:"page_id"`
+}
+
+type ListDbResponse struct {
+	Code       int         `json:"code"`
+	Status     string      `json:"status"`
+	Message    string      `json:"message"`
+	Data       interface{} `json:"data"`
+	RequestId  string      `json:"requestId"`
+	Limit      int         `json:"limit"`
+	PageId     int         `json:"page_id"`
+	TotalPages int         `json:"total_pages"`
+	TotalCount int64       `json:"total_count"`
+}
+type Filter struct {
+	FilterType  string `json:"filterParameter"`
+	FilterValue string `json:"filterValue"`
 }

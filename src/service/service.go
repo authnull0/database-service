@@ -47,3 +47,15 @@ func (d *DbService) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeResp
 	}
 	return response, nil
 }
+func (d *DbService) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, error) {
+
+	response, err := dbRepository.ListDatabase(req)
+	if err != nil {
+		return dto.ListDbResponse{
+			Code:    500,
+			Status:  "Internal Server Error",
+			Message: "Error while displaying LogEntry",
+		}, nil
+	}
+	return response, nil
+}

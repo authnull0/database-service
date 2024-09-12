@@ -76,6 +76,8 @@ func setupRoutes(r *gin.Engine) *gin.Engine {
 	r.POST("api/v1/dbUser", dbController.DbUser)
 	//API to sync privilege
 	r.POST("api/v1/dbPrivilege", dbController.DbPrivilege)
+	//API to list Database
+	r.POST("api/v1/listDatabase", dbController.ListDatabase)
 
 	return r
 }

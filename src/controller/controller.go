@@ -14,7 +14,7 @@ type DbController struct{}
 var dbService = service.DbService{}
 
 func (s *DbController) DbSync(ctx *gin.Context) {
-	var dbSyncRequest dto.DbsyncRequest
+	var dbSyncRequest dto.DbSyncRequest
 	if err := ctx.ShouldBindJSON(&dbSyncRequest); err != nil {
 		ctx.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -52,6 +52,22 @@ func (s *DbController) DbPrivilege(ctx *gin.Context) {
 	}
 
 	resp, err := dbService.DbPrivilege(dbPrivilegeRequest)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(200, resp)
+
+}
+
+func (s *DbController) ListDatabase(ctx *gin.Context) {
+	var listDbRequest dto.ListDbRequest
+	if err := ctx.ShouldBindJSON(&listDbRequest); err != nil {
+		ctx.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := dbService.ListDatabase(listDbRequest)
 	if err != nil {
 		ctx.JSON(500, gin.H{"error": err.Error()})
 		return

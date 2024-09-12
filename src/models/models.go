@@ -24,7 +24,10 @@ type DbSynchronization struct {
 	DatabaseType string `json:"database_type"`
 	DatabaseName string `json:"database_name"`
 	Table        string `json:"table_name"`
+	Host         string `json:"host"`
+	Port         string `json:"port"`
 	Status       string `json:"status"`
+	CreatedAt    int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
 func (o *DbSynchronization) TableName() string {
@@ -36,8 +39,9 @@ type DbUser struct {
 	OrgId    int `json:"org_id"`
 	TenantId int `json:"tenant_id"`
 
-	TableId  int    `json:"table_id"`
-	UserName string `json:"username"`
+	TableId   int    `json:"table_id"`
+	UserName  string `json:"username"`
+	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
 func (o *DbUser) TableName() string {
@@ -51,6 +55,7 @@ type DbPrivilege struct {
 	UserId    int    `json:"user_id"`
 	TableId   int    `json:"table_id"`
 	Privilege string `json:"privilege"`
+	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
 func (o *DbPrivilege) TableName() string {
