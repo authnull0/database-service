@@ -17,7 +17,7 @@ func (d *DbService) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error) {
 		return dto.DbSyncResponse{
 			Code:    500,
 			Status:  "Internal Server Error",
-			Message: "Error while displaying LogEntry",
+			Message: "Error while inserting database",
 		}, nil
 	}
 	return response, nil
@@ -30,7 +30,7 @@ func (d *DbService) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error) {
 		return dto.DbUserResponse{
 			Code:    500,
 			Status:  "Internal Server Error",
-			Message: "Error while displaying LogEntry",
+			Message: "Error while inserting user",
 		}, nil
 	}
 	return response, nil
@@ -42,7 +42,7 @@ func (d *DbService) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeResp
 		return dto.DbPrivilegeResponse{
 			Code:    500,
 			Status:  "Internal Server Error",
-			Message: "Error while displaying LogEntry",
+			Message: "Error while inserting user privilege",
 		}, nil
 	}
 	return response, nil
@@ -54,7 +54,19 @@ func (d *DbService) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, err
 		return dto.ListDbResponse{
 			Code:    500,
 			Status:  "Internal Server Error",
-			Message: "Error while displaying LogEntry",
+			Message: "Error while displaying Database",
+		}, nil
+	}
+	return response, nil
+}
+func (d *DbService) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.ListUserPrivilegeResponse, error) {
+
+	response, err := dbRepository.ListUserPrivilege(req)
+	if err != nil {
+		return dto.ListUserPrivilegeResponse{
+			Code:    500,
+			Status:  "Internal Server Error",
+			Message: "Error while displaying User and privilege",
 		}, nil
 	}
 	return response, nil

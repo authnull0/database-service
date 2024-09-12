@@ -49,9 +49,8 @@ type DbPrivilegeResponse struct {
 }
 
 type ListDbRequest struct {
-	OrgID    int `json:"orgId"`
-	TenantID int `json:"tenantId"`
-	//LogType    string   `json:"logType"`
+	OrgID     int      `json:"orgId"`
+	TenantID  int      `json:"tenantId"`
 	Filters   []Filter `json:"filters"`
 	RequestId string   `json:"requestId"`
 	Limit     int      `json:"limit"`
@@ -69,6 +68,28 @@ type ListDbResponse struct {
 	TotalPages int         `json:"total_pages"`
 	TotalCount int64       `json:"total_count"`
 }
+
+type ListUserPrivilegeRequest struct {
+	OrgID     int      `json:"orgId"`
+	TenantID  int      `json:"tenantId"`
+	Filters   []Filter `json:"filters"`
+	RequestId string   `json:"requestId"`
+	Limit     int      `json:"limit"`
+	PageId    int      `json:"page_id"`
+}
+
+type ListUserPrivilegeResponse struct {
+	Code       int         `json:"code"`
+	Status     string      `json:"status"`
+	Message    string      `json:"message"`
+	Data       interface{} `json:"data"`
+	RequestId  string      `json:"requestId"`
+	Limit      int         `json:"limit"`
+	PageId     int         `json:"page_id"`
+	TotalPages int         `json:"total_pages"`
+	TotalCount int64       `json:"total_count"`
+}
+
 type Filter struct {
 	FilterType  string `json:"filterParameter"`
 	FilterValue string `json:"filterValue"`

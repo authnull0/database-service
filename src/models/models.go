@@ -61,3 +61,14 @@ type DbPrivilege struct {
 func (o *DbPrivilege) TableName() string {
 	return "db_user"
 }
+
+type DbUserPrivilege struct {
+	ID           int    `json:"id"`
+	OrgId        int    `json:"org_id"`
+	TenantId     int    `json:"tenant_id"`
+	DatabaseName string `json:"database_name"`
+	UserName     string `json:"user_name"`
+	Db_Id        int    `json:"db_id"`
+	Privilege    string `json:"privilege"`
+	CreatedAt    int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+}

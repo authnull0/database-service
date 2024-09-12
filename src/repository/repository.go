@@ -216,11 +216,11 @@ func (s *DbRepository) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, 
 
 	// Fetch logs with limit and offset
 	if err := query.Offset(offset).Limit(req.Limit).Find(&listDbSync).Error; err != nil {
-		log.Default().Println("Error while fetching logs from agent_logs:", err)
+		log.Default().Println("Error while fetching list from db_synchronization:", err)
 		return dto.ListDbResponse{
 			Code:      500,
 			Status:    "Internal Server Error",
-			Message:   "Error while fetching Windows Agent logs",
+			Message:   "Error while listing databases",
 			RequestId: req.RequestId,
 			Limit:     req.Limit,
 			PageId:    req.PageId,
@@ -232,8 +232,78 @@ func (s *DbRepository) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, 
 	return dto.ListDbResponse{
 		Code:       200,
 		Status:     "Success",
-		Message:    "Agent Logs fetched successfully",
+		Message:    "Database list fetched successfully",
 		Data:       listDbSync,
+		RequestId:  req.RequestId,
+		Limit:      req.Limit,
+		PageId:     req.PageId,
+		TotalPages: int(totalPages),
+		TotalCount: totalCount,
+	}, nil
+}
+func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.ListUserPrivilegeResponse, error) {
+
+	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
+	if err != nil {
+		return dto.ListUserPrivilegeResponse{
+			Code:    500,
+			Status:  "Internal Server Error",
+			Message: "Error while fetching organization",
+		}, err
+	}
+	log.Default().Println("DB Name: ", dbName)
+
+	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
+
+	var listUserPrivilege []models.DbUserPrivilege
+
+	query := orgDb.Table("did.db_user AS u").
+		Select("s.db_name, s.host, u.user_name, p.previlege, s.cretaed_at").
+		Joins("LEFT JOIN did.db_synchronization AS s ON u.db_id = s.id").
+		Joins("LEFT JOIN did.db_previleges AS p ON u.id = p.user_id").
+		Where("u.org_id = ? AND u.tenant_id = ?", req.OrgID, req.TenantID).
+		Find(&listUserPrivilege)
+
+	for _, filter := range req.Filters {
+		if filter.FilterType == "Database" {
+			query = query.Where("databse_name = ?", filter.FilterValue)
+		}
+	}
+
+	for _, filter := range req.Filters {
+		if filter.FilterType == "Status" {
+			query = query.Where("status = ?", filter.FilterValue)
+		}
+	}
+
+	var totalCount int64
+	if err := query.Count(&totalCount).Error; err != nil {
+		log.Printf("%s", err)
+	}
+
+	offset := (req.PageId - 1) * req.Limit
+	totalPages := (totalCount + int64(req.Limit) - 1) / int64(req.Limit)
+
+	// Fetch logs with limit and offset
+	if err := query.Offset(offset).Limit(req.Limit).Find(&listUserPrivilege).Error; err != nil {
+		log.Default().Println("Error while fetching list from db_privilege:", err)
+		return dto.ListUserPrivilegeResponse{
+			Code:      500,
+			Status:    "Internal Server Error",
+			Message:   "Error while listing users and privileges",
+			RequestId: req.RequestId,
+			Limit:     req.Limit,
+			PageId:    req.PageId,
+		}, err
+	}
+
+	log.Default().Printf("Total count %d", totalCount)
+
+	return dto.ListUserPrivilegeResponse{
+		Code:       200,
+		Status:     "Success",
+		Message:    "Users and privileges list fetched successfully",
+		Data:       listUserPrivilege,
 		RequestId:  req.RequestId,
 		Limit:      req.Limit,
 		PageId:     req.PageId,
