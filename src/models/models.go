@@ -39,9 +39,10 @@ type DbUser struct {
 	OrgId    int `json:"org_id"`
 	TenantId int `json:"tenant_id"`
 
-	TableId   int    `json:"table_id"`
-	UserName  string `json:"username"`
-	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	DatabaseId int    `json:"db_id"`
+	UserName   string `json:"username"`
+	Status     string `json:"status"`
+	CreatedAt  int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
 func (o *DbUser) TableName() string {
@@ -49,13 +50,13 @@ func (o *DbUser) TableName() string {
 }
 
 type DbPrivilege struct {
-	ID        int    `json:"id"`
-	OrgId     int    `json:"org_id"`
-	TenantId  int    `json:"tenant_id"`
-	UserId    int    `json:"user_id"`
-	TableId   int    `json:"table_id"`
-	Privilege string `json:"privilege"`
-	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	ID         int    `json:"id"`
+	OrgId      int    `json:"org_id"`
+	TenantId   int    `json:"tenant_id"`
+	UserId     int    `json:"user_id"`
+	DatabaseId int    `json:"db_id"`
+	Privilege  string `json:"privilege"`
+	CreatedAt  int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
 func (o *DbPrivilege) TableName() string {

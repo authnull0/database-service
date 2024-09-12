@@ -76,8 +76,8 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 
 	// Step 1: Find id in db_synchronization
 	var dbSync models.DbSynchronization
-	err = orgDb.Table("db_synchronization").Where("org_id = ? AND tenant_id = ? AND database_name = ? AND table = ?",
-		req.OrgID, req.TenantID, req.DatabaseName, req.TableName).First(&dbSync).Error
+	err = orgDb.Table("db_synchronization").Where("org_id = ? AND tenant_id = ? AND database_name = ?",
+		req.OrgID, req.TenantID, req.DatabaseName).First(&dbSync).Error
 	if err != nil {
 		log.Default().Println("Error while fetching from db_synchronization:", err)
 		return dto.DbUserResponse{
@@ -91,9 +91,10 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 		OrgId:    req.OrgID,
 		TenantId: req.TenantID,
 
-		TableId:   dbSync.ID, // Using the ID from db_synchronization as table_id
-		UserName:  req.UserName,
-		CreatedAt: time.Now().Unix(),
+		DatabaseId: dbSync.ID, // Using the ID from db_synchronization as database_id
+		UserName:   req.UserName,
+		Status:     dbSync.Host,
+		CreatedAt:  time.Now().Unix(),
 	}
 
 	if err := orgDb.Table("db_user").Create(&dbUser).Error; err != nil {
@@ -128,8 +129,8 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 
 	// Step 1: Find  table_id
 	var dbSync models.DbSynchronization
-	err = orgDb.Table("db_synchronization").Where("org_id = ? AND tenant_id = ? AND database_name = ? AND table = ?",
-		req.OrgID, req.TenantID, req.DatabaseName, req.TabelName).First(&dbSync).Error
+	err = orgDb.Table("db_synchronization").Where("org_id = ? AND tenant_id = ? AND database_name = ?",
+		req.OrgID, req.TenantID, req.DatabaseName).First(&dbSync).Error
 	if err != nil {
 		log.Default().Println("Error while fetching from db_synchronization:", err)
 		return dto.DbPrivilegeResponse{
@@ -153,12 +154,12 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 	}
 
 	userPrivilege := models.DbPrivilege{
-		OrgId:     req.OrgID,
-		TenantId:  req.TenantID,
-		UserId:    dbUser.ID, // User ID from db_user
-		TableId:   dbSync.ID, // Table ID from db_synchronization
-		Privilege: req.Privilege,
-		CreatedAt: time.Now().Unix(),
+		OrgId:      req.OrgID,
+		TenantId:   req.TenantID,
+		UserId:     dbUser.ID, // User ID from db_user
+		DatabaseId: dbSync.ID, // Table ID from db_synchronization
+		Privilege:  req.Privilege,
+		CreatedAt:  time.Now().Unix(),
 	}
 
 	if err := orgDb.Table("user_privilege").Create(&userPrivilege).Error; err != nil {
@@ -266,13 +267,22 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 
 	for _, filter := range req.Filters {
 		if filter.FilterType == "Database" {
-			query = query.Where("databse_name = ?", filter.FilterValue)
+			query = query.Where("s.databse_name = ?", filter.FilterValue)
 		}
 	}
-
+	for _, filter := range req.Filters {
+		if filter.FilterType == "User" {
+			query = query.Where("u.user_name = ?", filter.FilterValue)
+		}
+	}
+	for _, filter := range req.Filters {
+		if filter.FilterType == "Privilege" {
+			query = query.Where("p.privilege = ?", filter.FilterValue)
+		}
+	}
 	for _, filter := range req.Filters {
 		if filter.FilterType == "Status" {
-			query = query.Where("status = ?", filter.FilterValue)
+			query = query.Where("d.status = ?", filter.FilterValue)
 		}
 	}
 
