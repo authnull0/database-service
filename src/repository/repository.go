@@ -265,7 +265,7 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 
 	// Step 2: Fetch users for the given OrgID and TenantID
 	var dbUsers []models.DbUser
-	err = orgDb.Where("org_id = ? AND tenant_id = ? AND created_at", req.OrgID, req.TenantID).Find(&dbUsers).Error
+	err = orgDb.Where("org_id = ? AND tenant_id = ?", req.OrgID, req.TenantID).Find(&dbUsers).Error
 	if err != nil {
 		return dto.ListUserPrivilegeResponse{
 			Code:    500,
