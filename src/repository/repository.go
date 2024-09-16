@@ -15,6 +15,7 @@ type DbRepository struct{}
 
 // Dbsync inserts the database sync details into the db_synchronization table
 func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error) {
+
 	// Get the organization-specific database name dynamically
 	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
 	if err != nil {
@@ -116,7 +117,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 	}, nil
 }
 func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeResponse, error) {
-
+	log.Default().Println("Inside the DbPrivilege - Database service")
 	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
 	if err != nil {
 		log.Default().Println("Error while fetching organization:", err)
@@ -129,6 +130,8 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 	log.Default().Println("DB Name: ", dbName)
 
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
+
+	cleanUserName := strings.Trim(req.UserName, "'")
 
 	// Step 1: Find  table_id
 	var dbSync models.DbSynchronization
@@ -146,7 +149,7 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 	// Step 2: Find the relevant entry in db_user (for user_id)
 	var dbUser models.DbUser
 	err = orgDb.Table("did.db_user").Where("org_id = ? AND tenant_id = ? AND user_name = ?",
-		req.OrgID, req.TenantID, req.UserName).First(&dbUser).Error
+		req.OrgID, req.TenantID, cleanUserName).First(&dbUser).Error
 	if err != nil {
 		log.Default().Println("Error while fetching from db_user:", err)
 		return dto.DbPrivilegeResponse{
