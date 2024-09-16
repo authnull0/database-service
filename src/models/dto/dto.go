@@ -94,3 +94,13 @@ type Filter struct {
 	FilterType  string `json:"filterParameter"`
 	FilterValue string `json:"filterValue"`
 }
+type DbUserPrivilegeResponse struct {
+	OrgID     int    `json:"org_id"`
+	TenantID  int    `json:"tenant_id"`
+	DbName    string `json:"db_name"`
+	UserName  string `json:"user_name"`
+	Host      string `json:"host"`
+	Status    string `json:"status"`
+	Privilege string `json:"privilege"`
+	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+}

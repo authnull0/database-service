@@ -250,7 +250,7 @@ func (s *DbRepository) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, 
 	}, nil
 }
 func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.ListUserPrivilegeResponse, error) {
-
+	// Step 1: Fetch the dynamic database name for the organization
 	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
 	if err != nil {
 		return dto.ListUserPrivilegeResponse{
@@ -263,70 +263,133 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
 
-	var listUserPrivilege []models.DbUserPrivilege
-
-	query := orgDb.Table("did.db_user AS u").
-		Select("s.org_id, s.tenant_id, s.db_name, u.user_name, s.host, s.status, p.privilege, u.created_at").
-		Joins("LEFT JOIN did.db_synchronization AS s ON u.db_id = s.id").
-		Joins("LEFT JOIN did.db_privilege AS p ON u.id = p.user_id").
-		Where("u.org_id = ? AND u.tenant_id = ?", req.OrgID, req.TenantID).
-		Find(&listUserPrivilege)
-
-	log.Default().Printf("ListUserPrivilege: %v", listUserPrivilege)
-
-	for _, filter := range req.Filters {
-		if filter.FilterType == "Database" {
-			query = query.Where("s.db_name = ?", filter.FilterValue)
-		}
-	}
-	for _, filter := range req.Filters {
-		if filter.FilterType == "User" {
-			query = query.Where("u.user_name = ?", filter.FilterValue)
-		}
-	}
-	for _, filter := range req.Filters {
-		if filter.FilterType == "Privilege" {
-			query = query.Where("p.privilege = ?", filter.FilterValue)
-		}
-	}
-	for _, filter := range req.Filters {
-		if filter.FilterType == "Status" {
-			query = query.Where("d.status = ?", filter.FilterValue)
-		}
-	}
-
-	var totalCount int64
-	if err := query.Count(&totalCount).Error; err != nil {
-		log.Printf("%s", err)
-	}
-
-	offset := (req.PageId - 1) * req.Limit
-	totalPages := (totalCount + int64(req.Limit) - 1) / int64(req.Limit)
-
-	// Fetch logs with limit and offset
-	if err := query.Offset(offset).Limit(req.Limit).Find(&listUserPrivilege).Error; err != nil {
-		log.Default().Println("Error while fetching list from db_privilege:", err)
+	// Step 2: Fetch users for the given OrgID and TenantID
+	var dbUsers []models.DbUser
+	err = orgDb.Where("org_id = ? AND tenant_id = ? AND created_at", req.OrgID, req.TenantID).Find(&dbUsers).Error
+	if err != nil {
 		return dto.ListUserPrivilegeResponse{
-			Code:      500,
-			Status:    "Internal Server Error",
-			Message:   "Error while listing users and privileges",
-			RequestId: req.RequestId,
-			Limit:     req.Limit,
-			PageId:    req.PageId,
+			Code:    500,
+			Status:  "Internal Server Error",
+			Message: "Error while fetching users",
 		}, err
 	}
 
-	log.Default().Printf("Total count %d", totalCount)
+	// Step 3: Fetch privileges for each user
+	var privileges []models.DbPrivilege
+	for _, user := range dbUsers {
+		var userPrivileges []models.DbPrivilege
+		err = orgDb.Where("user_id = ?", user.ID).Find(&userPrivileges).Error
+		if err != nil {
+			log.Printf("Error while fetching privileges for user ID %d: %s", user.ID, err)
+			continue
+		}
+		privileges = append(privileges, userPrivileges...)
+	}
+
+	// Step 4: Fetch synchronization info for each privilege
+	var dbSyncs []models.DbSynchronization
+	for _, privilege := range privileges {
+		var sync models.DbSynchronization
+		err = orgDb.Where("id = ?", privilege.DatabaseId).First(&sync).Error
+		if err != nil {
+			log.Printf("Error while fetching sync info for DB ID %d: %s", privilege.DatabaseId, err)
+			continue
+		}
+		dbSyncs = append(dbSyncs, sync)
+	}
+
+	// Step 5: Combine results into the response
+	var listUserPrivilege []dto.DbUserPrivilegeResponse
+	for _, privilege := range privileges {
+		// Find the associated user and synchronization info for each privilege
+		var user models.DbUser
+		for _, u := range dbUsers {
+			if u.ID == privilege.UserId {
+				user = u
+				break
+			}
+		}
+
+		var sync models.DbSynchronization
+		for _, s := range dbSyncs {
+			if s.ID == privilege.DatabaseId {
+				sync = s
+				break
+			}
+		}
+
+		// Combine the data into a single response struct
+		listUserPrivilege = append(listUserPrivilege, dto.DbUserPrivilegeResponse{
+			OrgID:     sync.OrgId,
+			TenantID:  sync.TenantId,
+			DbName:    sync.DatabaseName,
+			UserName:  user.UserName,
+			Host:      sync.Host,
+			Status:    sync.Status,
+			Privilege: privilege.Privilege,
+			CreatedAt: sync.CreatedAt,
+		})
+	}
+
+	// Apply filters after fetching the results
+	filteredResults := listUserPrivilege
+	for _, filter := range req.Filters {
+		var temp []dto.DbUserPrivilegeResponse
+		for _, item := range filteredResults {
+			switch filter.FilterType { // Ensure you're using the correct field name
+			case "Database":
+				if item.DbName == filter.FilterValue {
+					temp = append(temp, item)
+				}
+			case "User":
+				if item.UserName == filter.FilterValue {
+					temp = append(temp, item)
+				}
+			case "Status":
+				if item.Status == filter.FilterValue {
+					temp = append(temp, item)
+				}
+			}
+		}
+		filteredResults = temp
+	}
+
+	// Step 6: Implement pagination
+	totalCount := len(filteredResults)
+	totalPages := (totalCount + req.Limit - 1) / req.Limit // Total pages calculation
+	offset := (req.PageId - 1) * req.Limit
+
+	// Handle out of bounds for pagination
+	if offset >= totalCount {
+		return dto.ListUserPrivilegeResponse{
+			Code:       200,
+			Status:     "Success",
+			Message:    "Users and privileges list fetched successfully",
+			Data:       []dto.DbUserPrivilegeResponse{}, // Return empty if no results for that page
+			RequestId:  req.RequestId,
+			Limit:      req.Limit,
+			PageId:     req.PageId,
+			TotalPages: totalPages,
+			TotalCount: int64(totalCount),
+		}, nil
+	}
+
+	// Get the paginated result
+	end := offset + req.Limit
+	if end > totalCount {
+		end = totalCount
+	}
+	paginatedResult := filteredResults[offset:end]
 
 	return dto.ListUserPrivilegeResponse{
 		Code:       200,
 		Status:     "Success",
 		Message:    "Users and privileges list fetched successfully",
-		Data:       listUserPrivilege,
+		Data:       paginatedResult,
 		RequestId:  req.RequestId,
 		Limit:      req.Limit,
 		PageId:     req.PageId,
-		TotalPages: int(totalPages),
-		TotalCount: totalCount,
+		TotalPages: totalPages,
+		TotalCount: int64(totalCount),
 	}, nil
 }

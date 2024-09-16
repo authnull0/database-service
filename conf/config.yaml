@@ -44,7 +44,7 @@ verify:
     #port: 5432
     user: kloudone
     password: authnull@kloudone@2007
-    name: development
+    name: authnull_dev
     schema: did
     
 # ------------------------------------------------------
