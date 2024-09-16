@@ -250,7 +250,7 @@ func (s *DbRepository) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, 
 	}, nil
 }
 func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.ListUserPrivilegeResponse, error) {
-	// Step 1: Fetch the dynamic database name for the organization
+
 	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
 	if err != nil {
 		return dto.ListUserPrivilegeResponse{
@@ -263,7 +263,6 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
 
-	// Step 2: Fetch users for the given OrgID and TenantID
 	var dbUsers []models.DbUser
 	err = orgDb.Where("org_id = ? AND tenant_id = ?", req.OrgID, req.TenantID).Find(&dbUsers).Error
 	if err != nil {
@@ -274,7 +273,6 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 		}, err
 	}
 
-	// Step 3: Fetch privileges for each user
 	var privileges []models.DbPrivilege
 	for _, user := range dbUsers {
 		var userPrivileges []models.DbPrivilege
@@ -286,7 +284,6 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 		privileges = append(privileges, userPrivileges...)
 	}
 
-	// Step 4: Fetch synchronization info for each privilege
 	var dbSyncs []models.DbSynchronization
 	for _, privilege := range privileges {
 		var sync models.DbSynchronization
@@ -298,7 +295,6 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 		dbSyncs = append(dbSyncs, sync)
 	}
 
-	// Step 5: Combine results into the response
 	var listUserPrivilege []dto.DbUserPrivilegeResponse
 	for _, privilege := range privileges {
 		// Find the associated user and synchronization info for each privilege
@@ -345,6 +341,10 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 				if item.UserName == filter.FilterValue {
 					temp = append(temp, item)
 				}
+			case "Privilege":
+				if item.Privilege == filter.FilterValue {
+					temp = append(temp, item)
+				}
 			case "Status":
 				if item.Status == filter.FilterValue {
 					temp = append(temp, item)
@@ -354,7 +354,6 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 		filteredResults = temp
 	}
 
-	// Step 6: Implement pagination
 	totalCount := len(filteredResults)
 	totalPages := (totalCount + req.Limit - 1) / req.Limit // Total pages calculation
 	offset := (req.PageId - 1) * req.Limit
