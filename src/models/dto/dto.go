@@ -21,8 +21,9 @@ type DbUserRequest struct {
 	TenantID     int    `json:"tenantId"`
 	Databasetype string `json:"databaseType"`
 	DatabaseName string `json:"databaseName"`
-	//TableName    string `json:"tableName"`
+
 	UserName string `json:"userName"`
+	Role     string `json:"role"`
 }
 
 type DbUserResponse struct {
@@ -69,6 +70,27 @@ type ListDbResponse struct {
 	TotalCount int64       `json:"total_count"`
 }
 
+type ListUserRequest struct {
+	OrgID     int      `json:"orgId"`
+	TenantID  int      `json:"tenantId"`
+	Filters   []Filter `json:"filters"`
+	RequestId string   `json:"requestId"`
+	Limit     int      `json:"limit"`
+	PageId    int      `json:"page_id"`
+}
+
+type ListUserResponse struct {
+	Code       int         `json:"code"`
+	Status     string      `json:"status"`
+	Message    string      `json:"message"`
+	Data       interface{} `json:"data"`
+	DbName     string      `json:db_name`
+	RequestId  string      `json:"requestId"`
+	Limit      int         `json:"limit"`
+	PageId     int         `json:"page_id"`
+	TotalPages int         `json:"total_pages"`
+	TotalCount int64       `json:"total_count"`
+}
 type ListUserPrivilegeRequest struct {
 	OrgID     int      `json:"orgId"`
 	TenantID  int      `json:"tenantId"`
@@ -95,6 +117,7 @@ type Filter struct {
 	FilterValue string `json:"filterValue"`
 }
 type DbUserPrivilegeResponse struct {
+	ID        int    `json:id`
 	OrgID     int    `json:"org_id"`
 	TenantID  int    `json:"tenant_id"`
 	DbName    string `json:"db_name"`

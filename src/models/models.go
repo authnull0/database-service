@@ -41,6 +41,7 @@ type DbUser struct {
 
 	DatabaseId int    `gorm:"column:db_id" json:"db_id"`
 	UserName   string `gorm:"column:user_name" json:"username"`
+	Role       string `gorm:"column:role" json:"role"`
 	Status     string `gorm:"column:status" json:"status"`
 	CreatedAt  int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
