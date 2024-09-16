@@ -2,6 +2,7 @@ package repository
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/authnull0/database-service/src/db"
@@ -87,12 +88,14 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 		}, err
 	}
 
+	cleanUserName := strings.Trim(req.UserName, "'")
+
 	dbUser := models.DbUser{
 		OrgId:    req.OrgID,
 		TenantId: req.TenantID,
 
 		DatabaseId: dbSync.ID, // Using the ID from db_synchronization as database_id
-		UserName:   req.UserName,
+		UserName:   cleanUserName,
 		Status:     dbSync.Status,
 		CreatedAt:  time.Now().Unix(),
 	}
@@ -153,12 +156,13 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 		}, err
 	}
 
+	cleanPrivilege := strings.Trim(req.Privilege, `"`)
 	userPrivilege := models.DbPrivilege{
 		OrgId:      req.OrgID,
 		TenantId:   req.TenantID,
 		UserId:     dbUser.ID, // User ID from db_user
 		DatabaseId: dbSync.ID, // Table ID from db_synchronization
-		Privilege:  req.Privilege,
+		Privilege:  cleanPrivilege,
 		CreatedAt:  time.Now().Unix(),
 	}
 
