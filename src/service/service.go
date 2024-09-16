@@ -59,6 +59,19 @@ func (d *DbService) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, err
 	}
 	return response, nil
 }
+
+func (d *DbService) ListUser(req dto.ListUserRequest) (dto.ListUserResponse, error) {
+
+	response, err := dbRepository.ListUser(req)
+	if err != nil {
+		return dto.ListUserResponse{
+			Code:    500,
+			Status:  "Internal Server Error",
+			Message: "Error while displaying User",
+		}, nil
+	}
+	return response, nil
+}
 func (d *DbService) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.ListUserPrivilegeResponse, error) {
 
 	response, err := dbRepository.ListUserPrivilege(req)

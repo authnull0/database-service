@@ -97,6 +97,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 
 		DatabaseId: dbSync.ID, // Using the ID from db_synchronization as database_id
 		UserName:   cleanUserName,
+		Role:       req.Role,
 		Status:     dbSync.Status,
 		CreatedAt:  time.Now().Unix(),
 	}
@@ -170,7 +171,7 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 	}
 
 	if err := orgDb.Table("did.db_privilege").Create(&userPrivilege).Error; err != nil {
-		log.Default().Println("Error while inserting into user_privilege:", err)
+		log.Default().Println("Error while inserting into db_privilege:", err)
 		return dto.DbPrivilegeResponse{
 			Code:    500,
 			Status:  "Internal Server Error",
@@ -249,6 +250,76 @@ func (s *DbRepository) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, 
 		TotalCount: totalCount,
 	}, nil
 }
+
+func (s *DbRepository) ListUser(req dto.ListUserRequest) (dto.ListUserResponse, error) {
+
+	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
+	if err != nil {
+		return dto.ListUserResponse{
+			Code:    500,
+			Status:  "Internal Server Error",
+			Message: "Error while fetching organization",
+		}, err
+	}
+	log.Default().Println("DB Name: ", dbName)
+
+	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
+
+	var listUser []models.DbUser
+
+	query := orgDb.Table("did.db_user AS u").
+		Select("u.*, ds.db_name").
+		Joins("JOIN did.db_synchronization AS ds ON u.db_id = ds.id").
+		Where("u.org_id = ? AND u.tenant_id = ?", req.OrgID, req.TenantID)
+
+	for _, filter := range req.Filters {
+		if filter.FilterType == "Database" {
+			query = query.Where("ds.db_name = ?", filter.FilterValue)
+		}
+	}
+
+	for _, filter := range req.Filters {
+		if filter.FilterType == "User" {
+			query = query.Where("u.user_name = ?", filter.FilterValue)
+		}
+	}
+
+	var totalCount int64
+	if err := query.Count(&totalCount).Error; err != nil {
+		log.Printf("%s", err)
+	}
+
+	offset := (req.PageId - 1) * req.Limit
+	totalPages := (totalCount + int64(req.Limit) - 1) / int64(req.Limit)
+
+	// Fetch logs with limit and offset
+	if err := query.Offset(offset).Limit(req.Limit).Find(&listUser).Error; err != nil {
+		log.Default().Println("Error while fetching list from db_synchronization:", err)
+		return dto.ListUserResponse{
+			Code:      500,
+			Status:    "Internal Server Error",
+			Message:   "Error while listing user",
+			RequestId: req.RequestId,
+			Limit:     req.Limit,
+			PageId:    req.PageId,
+		}, err
+	}
+
+	log.Default().Printf("Total count %d", totalCount)
+
+	return dto.ListUserResponse{
+		Code:       200,
+		Status:     "Success",
+		Message:    "Database list fetched successfully",
+		Data:       listUser,
+		RequestId:  req.RequestId,
+		Limit:      req.Limit,
+		PageId:     req.PageId,
+		TotalPages: int(totalPages),
+		TotalCount: totalCount,
+	}, nil
+}
+
 func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.ListUserPrivilegeResponse, error) {
 
 	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
@@ -316,12 +387,14 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 
 		// Combine the data into a single response struct
 		listUserPrivilege = append(listUserPrivilege, dto.DbUserPrivilegeResponse{
+			ID:        user.ID,
 			OrgID:     sync.OrgId,
 			TenantID:  sync.TenantId,
 			DbName:    sync.DatabaseName,
 			UserName:  user.UserName,
 			Host:      sync.Host,
 			Status:    sync.Status,
+			Role:      user.Role,
 			Privilege: privilege.Privilege,
 			CreatedAt: sync.CreatedAt,
 		})
@@ -332,7 +405,7 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 	for _, filter := range req.Filters {
 		var temp []dto.DbUserPrivilegeResponse
 		for _, item := range filteredResults {
-			switch filter.FilterType { // Ensure you're using the correct field name
+			switch filter.FilterType {
 			case "Database":
 				if item.DbName == filter.FilterValue {
 					temp = append(temp, item)

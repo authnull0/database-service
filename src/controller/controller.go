@@ -75,6 +75,21 @@ func (s *DbController) ListDatabase(ctx *gin.Context) {
 	ctx.JSON(200, resp)
 
 }
+func (s *DbController) ListUser(ctx *gin.Context) {
+	var listUserRequest dto.ListUserRequest
+	if err := ctx.ShouldBindJSON(&listUserRequest); err != nil {
+		ctx.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := dbService.ListUser(listUserRequest)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(200, resp)
+
+}
 
 func (s *DbController) ListUserPrivilege(ctx *gin.Context) {
 	var listUserPrivilegeRequest dto.ListUserPrivilegeRequest
