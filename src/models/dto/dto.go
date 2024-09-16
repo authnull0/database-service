@@ -124,6 +124,7 @@ type DbUserPrivilegeResponse struct {
 	UserName  string `json:"user_name"`
 	Host      string `json:"host"`
 	Status    string `json:"status"`
+	Role      string `json:"role"`
 	Privilege string `json:"privilege"`
 	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }

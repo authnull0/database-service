@@ -394,6 +394,7 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 			UserName:  user.UserName,
 			Host:      sync.Host,
 			Status:    sync.Status,
+			Role:      user.Role,
 			Privilege: privilege.Privilege,
 			CreatedAt: sync.CreatedAt,
 		})
