@@ -9,6 +9,7 @@ type DbSyncRequest struct {
 	Host         string `json:"host"`
 	Port         string `json:"port"`
 	Status       string `json:"status"`
+	Uuid         string `json:"uuid"`
 }
 
 type DbSyncResponse struct {
@@ -23,6 +24,7 @@ type DbUserRequest struct {
 	DatabaseName string `json:"databaseName"`
 
 	UserName string `json:"userName"`
+	Host     string `json:"host"`
 	Role     string `json:"role"`
 }
 
@@ -117,7 +119,7 @@ type Filter struct {
 	FilterValue string `json:"filterValue"`
 }
 type DbUserPrivilegeResponse struct {
-	ID        int    `json:id`
+	ID        int    `json:"id"`
 	OrgID     int    `json:"org_id"`
 	TenantID  int    `json:"tenant_id"`
 	DbName    string `json:"db_name"`
