@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"log"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/authnull0/database-service/src/models"
 	"github.com/authnull0/database-service/src/models/dto"
 	"github.com/authnull0/database-service/src/utils"
+	"gorm.io/gorm"
 )
 
 type DbRepository struct{}
@@ -19,7 +21,7 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 	// Get the organization-specific database name dynamically
 	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
 	if err != nil {
-		log.Default().Println("Error while fetching organization:", err)
+		log.Default().Println("Error while fetching organization database name:", err)
 		return dto.DbSyncResponse{
 			Code:    500,
 			Status:  "Internal Server Error",
@@ -31,17 +33,52 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 	// Establish a dynamic database connection
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
 
+	// Helper function to check if the agent is already registered
+	isAgentRegistered := func(db *gorm.DB, uniqueKey string) (bool, error) {
+		var agent models.DbSynchronization
+		err := db.Table("did.db_synchronization").Where("uuid = ?", uniqueKey).First(&agent).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, err
+		}
+		return agent.AgentStatus == "registered", nil
+	}
+
+	// Check if the agent is already registered
+	registered, err := isAgentRegistered(orgDb, req.Uuid)
+	if err != nil {
+		log.Default().Println("Error while checking agent registration:", err)
+		return dto.DbSyncResponse{
+			Code:    500,
+			Status:  "Internal Server Error",
+			Message: "Error while checking agent registration",
+		}, err
+	}
+
+	if registered {
+		log.Default().Println("Agent is already registered. No further action needed.")
+		return dto.DbSyncResponse{
+			Code:    200,
+			Status:  "Success",
+			Message: "Agent is already registered.",
+		}, nil
+	}
+	DbStatus := "Inactive"
+
+	if req.Status == "Uptime" {
+		DbStatus = "Active"
+	}
 	// Create the db_synchronization record to insert
 	dbSync := models.DbSynchronization{
 		OrgId:        req.OrgID,
 		TenantId:     req.TenantID,
 		DatabaseType: req.Databasetype,
 		DatabaseName: req.DatabaseName,
-		//Table:        req.TableName,
-		Host:      req.Host,
-		Port:      req.Port,
-		Status:    req.Status,
-		CreatedAt: time.Now().Unix(),
+		Host:         req.Host,
+		Port:         req.Port,
+		Status:       DbStatus,
+		AgentStatus:  "registered",
+		Uuid:         req.Uuid,
+		CreatedAt:    time.Now().Unix(),
 	}
 
 	// Insert the record into the db_synchronization table
@@ -54,6 +91,7 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 		}, err
 	}
 
+	// Return success response
 	return dto.DbSyncResponse{
 		Code:    200,
 		Status:  "Success",
@@ -98,6 +136,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 		DatabaseId: dbSync.ID, // Using the ID from db_synchronization as database_id
 		UserName:   cleanUserName,
 		Role:       req.Role,
+		Host:       req.Host,
 		Status:     dbSync.Status,
 		CreatedAt:  time.Now().Unix(),
 	}
@@ -392,7 +431,7 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 			TenantID:  sync.TenantId,
 			DbName:    sync.DatabaseName,
 			UserName:  user.UserName,
-			Host:      sync.Host,
+			Host:      user.Host,
 			Status:    sync.Status,
 			Role:      user.Role,
 			Privilege: privilege.Privilege,
