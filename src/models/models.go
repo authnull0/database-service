@@ -24,12 +24,12 @@ type DbSynchronization struct {
 	DatabaseType string `gorm:"column:db_type" json:"db_type"`
 	DatabaseName string `gorm:"column:db_name" json:"db_name"`
 	//Table        string `json:"table_name"`
-	Host        string `gorm:"column:host" json:"host"`
-	Port        string `gorm:"column:port" json:"port"`
-	AgentStatus string `gorm:"column:agent_status" json:"agent_status"`
-	Uuid        string `gorm:"column:uuid" json:"uuid"`
-	Status      string `gorm:"column:status" json:"status"`
-	CreatedAt   int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	Host string `gorm:"column:host" json:"host"`
+	Port string `gorm:"column:port" json:"port"`
+	//	AgentStatus string `gorm:"column:agent_status" json:"agent_status"`
+	Uuid      string `gorm:"column:uuid" json:"uuid"`
+	Status    string `gorm:"column:status" json:"status"`
+	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
 func (o *DbSynchronization) TableName() string {

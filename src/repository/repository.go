@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"errors"
 	"log"
 	"strings"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/authnull0/database-service/src/models"
 	"github.com/authnull0/database-service/src/models/dto"
 	"github.com/authnull0/database-service/src/utils"
-	"gorm.io/gorm"
 )
 
 type DbRepository struct{}
@@ -32,43 +30,44 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 
 	// Establish a dynamic database connection
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
+	var dbSync models.DbSynchronization
 
-	// Helper function to check if the agent is already registered
-	isAgentRegistered := func(db *gorm.DB, uniqueKey string) (bool, error) {
-		var agent models.DbSynchronization
-		err := db.Table("did.db_synchronization").Where("uuid = ?", uniqueKey).First(&agent).Error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, err
-		}
-		return agent.AgentStatus == "registered", nil
-	}
-
-	// Check if the agent is already registered
-	registered, err := isAgentRegistered(orgDb, req.Uuid)
-	if err != nil {
-		log.Default().Println("Error while checking agent registration:", err)
-		return dto.DbSyncResponse{
-			Code:    500,
-			Status:  "Internal Server Error",
-			Message: "Error while checking agent registration",
-		}, err
-	}
-
-	if registered {
-		log.Default().Println("Agent is already registered. No further action needed.")
-		return dto.DbSyncResponse{
-			Code:    200,
-			Status:  "Success",
-			Message: "Agent is already registered.",
-		}, nil
-	}
 	DbStatus := "Inactive"
-
 	if req.Status == "Uptime" {
 		DbStatus = "Active"
 	}
+	err = orgDb.Table("did.db_synchronization").Where("db_name = ?", req.DatabaseName).First(&dbSync).Error
+	if err == nil {
+		// User exists, update the role if it has changed
+		if dbSync.Status != req.Status {
+			dbSync.Status = req.Status
+			dbSync.CreatedAt = time.Now().Unix()
+
+			if err := orgDb.Table("did.db_synchronization").Save(&dbSync).Error; err != nil {
+				log.Default().Println("Error while updating db_synchronization table:", err)
+				return dto.DbSyncResponse{
+					Code:    500,
+					Status:  "Internal Server Error",
+					Message: "Error while updating db_synchronization table",
+				}, err
+			}
+			return dto.DbSyncResponse{
+				Code:    200,
+				Status:  "Success",
+				Message: "Database status updated successfully",
+			}, nil
+		}
+
+		// No change in role, no update needed
+		return dto.DbSyncResponse{
+			Code:    200,
+			Status:  "Success",
+			Message: "User already exists with the same status. No update needed.",
+		}, nil
+	}
+
 	// Create the db_synchronization record to insert
-	dbSync := models.DbSynchronization{
+	dbSync = models.DbSynchronization{
 		OrgId:        req.OrgID,
 		TenantId:     req.TenantID,
 		DatabaseType: req.Databasetype,
@@ -76,7 +75,6 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 		Host:         req.Host,
 		Port:         req.Port,
 		Status:       DbStatus,
-		AgentStatus:  "registered",
 		Uuid:         req.Uuid,
 		CreatedAt:    time.Now().Unix(),
 	}
@@ -110,7 +108,6 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 			Message: "Error while fetching organization",
 		}, err
 	}
-	log.Default().Println("DB Name: ", dbName)
 
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
 
@@ -129,11 +126,44 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 
 	cleanUserName := strings.Trim(req.UserName, "'")
 
-	dbUser := models.DbUser{
-		OrgId:    req.OrgID,
-		TenantId: req.TenantID,
+	// Step 2: Check if the user already exists
+	var dbUser models.DbUser
+	err = orgDb.Table("did.db_user").Where("db_id = ? AND user_name = ?", dbSync.ID, cleanUserName).First(&dbUser).Error
+	if err == nil {
+		// User exists, update the role or status if it has changed
+		if dbUser.Role != req.Role {
+			dbUser.Role = req.Role
+			//dbUser.Status = req.Status
+			dbUser.CreatedAt = time.Now().Unix()
 
-		DatabaseId: dbSync.ID, // Using the ID from db_synchronization as database_id
+			if err := orgDb.Table("did.db_user").Save(&dbUser).Error; err != nil {
+				log.Default().Println("Error while updating db_user:", err)
+				return dto.DbUserResponse{
+					Code:    500,
+					Status:  "Internal Server Error",
+					Message: "Error while updating db_user",
+				}, err
+			}
+			return dto.DbUserResponse{
+				Code:    200,
+				Status:  "Success",
+				Message: "User role updated successfully",
+			}, nil
+		}
+
+		// No change in role, no update needed
+		return dto.DbUserResponse{
+			Code:    200,
+			Status:  "Success",
+			Message: "User already exists with the same role. No update needed.",
+		}, nil
+	}
+
+	// Insert a new user if it doesn't exist
+	dbUser = models.DbUser{
+		OrgId:      req.OrgID,
+		TenantId:   req.TenantID,
+		DatabaseId: dbSync.ID,
 		UserName:   cleanUserName,
 		Role:       req.Role,
 		Host:       req.Host,
@@ -156,6 +186,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 		Message: "User details inserted successfully into db_user",
 	}, nil
 }
+
 func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeResponse, error) {
 	log.Default().Println("Inside the DbPrivilege - Database service")
 	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
@@ -167,13 +198,12 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 			Message: "Error while fetching organization",
 		}, err
 	}
-	log.Default().Println("DB Name: ", dbName)
 
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
 
 	cleanUserName := strings.Trim(req.UserName, "'")
 
-	// Step 1: Find  table_id
+	// Step 1: Find id in db_synchronization
 	var dbSync models.DbSynchronization
 	err = orgDb.Table("did.db_synchronization").Where("org_id = ? AND tenant_id = ? AND db_name = ?",
 		req.OrgID, req.TenantID, req.DatabaseName).First(&dbSync).Error
@@ -200,28 +230,44 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 	}
 
 	cleanPrivilege := strings.Trim(req.Privilege, `"`)
-	userPrivilege := models.DbPrivilege{
-		OrgId:      req.OrgID,
-		TenantId:   req.TenantID,
-		UserId:     dbUser.ID, // User ID from db_user
-		DatabaseId: dbSync.ID, // Table ID from db_synchronization
-		Privilege:  cleanPrivilege,
-		CreatedAt:  time.Now().Unix(),
+
+	// Step 3: Check if the privilege already exists for the user
+	var dbPrivilege models.DbPrivilege
+	err = orgDb.Table("did.db_privilege").Where("user_id = ? AND db_id = ? AND privilege = ?",
+		dbUser.ID, dbSync.ID, cleanPrivilege).First(&dbPrivilege).Error
+	if err == nil {
+		// Privilege exists, no need to insert
+		return dto.DbPrivilegeResponse{
+			Code:    200,
+			Status:  "Success",
+			Message: "Privilege already exists. No update needed.",
+		}, nil
 	}
 
-	if err := orgDb.Table("did.db_privilege").Create(&userPrivilege).Error; err != nil {
+	// Insert a new privilege record
+	dbPrivilege = models.DbPrivilege{
+		OrgId:      req.OrgID,
+		TenantId:   req.TenantID,
+		DatabaseId: dbSync.ID,
+		UserId:     dbUser.ID,
+
+		Privilege: cleanPrivilege,
+		CreatedAt: time.Now().Unix(),
+	}
+
+	if err := orgDb.Table("did.db_privilege").Create(&dbPrivilege).Error; err != nil {
 		log.Default().Println("Error while inserting into db_privilege:", err)
 		return dto.DbPrivilegeResponse{
 			Code:    500,
 			Status:  "Internal Server Error",
-			Message: "Error while inserting into user_privilege",
+			Message: "Error while inserting into db_privilege",
 		}, err
 	}
 
 	return dto.DbPrivilegeResponse{
 		Code:    200,
 		Status:  "Success",
-		Message: "Privilege details inserted successfully into user_privilege",
+		Message: "Privilege inserted successfully",
 	}, nil
 }
 

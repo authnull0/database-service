@@ -22,10 +22,10 @@ type DbUserRequest struct {
 	TenantID     int    `json:"tenantId"`
 	Databasetype string `json:"databaseType"`
 	DatabaseName string `json:"databaseName"`
-
-	UserName string `json:"userName"`
-	Host     string `json:"host"`
-	Role     string `json:"role"`
+	Status       string `json:"status"`
+	UserName     string `json:"userName"`
+	Host         string `json:"host"`
+	Role         string `json:"role"`
 }
 
 type DbUserResponse struct {
