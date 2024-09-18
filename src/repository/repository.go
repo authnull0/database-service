@@ -32,13 +32,9 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
 	var dbSync models.DbSynchronization
 
-	DbStatus := "Inactive"
-	if req.Status == "Uptime" {
-		DbStatus = "Active"
-	}
 	err = orgDb.Table("did.db_synchronization").Where("db_name = ?", req.DatabaseName).First(&dbSync).Error
 	if err == nil {
-		// User exists, update the role if it has changed
+		// Database exists, update the status if it has changed
 		if dbSync.Status != req.Status {
 			dbSync.Status = req.Status
 			dbSync.CreatedAt = time.Now().Unix()
@@ -51,6 +47,8 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 					Message: "Error while updating db_synchronization table",
 				}, err
 			}
+
+			log.Default().Println("Database status updated successfully")
 			return dto.DbSyncResponse{
 				Code:    200,
 				Status:  "Success",
@@ -59,10 +57,11 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 		}
 
 		// No change in role, no update needed
+		log.Default().Println("Database already exists with the same status. No update needed.")
 		return dto.DbSyncResponse{
 			Code:    200,
 			Status:  "Success",
-			Message: "User already exists with the same status. No update needed.",
+			Message: "Database already exists with the same status. No update needed.",
 		}, nil
 	}
 
@@ -74,7 +73,7 @@ func (s *DbRepository) DbSync(req dto.DbSyncRequest) (dto.DbSyncResponse, error)
 		DatabaseName: req.DatabaseName,
 		Host:         req.Host,
 		Port:         req.Port,
-		Status:       DbStatus,
+		Status:       req.Status,
 		Uuid:         req.Uuid,
 		CreatedAt:    time.Now().Unix(),
 	}
@@ -111,7 +110,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 
 	orgDb := db.GetConnectiontoDatabaseDynamically(dbName)
 
-	// Step 1: Find id in db_synchronization
+	//Find id in db_synchronization
 	var dbSync models.DbSynchronization
 	err = orgDb.Table("did.db_synchronization").Where("org_id = ? AND tenant_id = ? AND db_name = ?",
 		req.OrgID, req.TenantID, req.DatabaseName).First(&dbSync).Error
@@ -126,7 +125,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 
 	cleanUserName := strings.Trim(req.UserName, "'")
 
-	// Step 2: Check if the user already exists
+	// Check if the user already exists
 	var dbUser models.DbUser
 	err = orgDb.Table("did.db_user").Where("db_id = ? AND user_name = ?", dbSync.ID, cleanUserName).First(&dbUser).Error
 	if err == nil {
@@ -144,6 +143,8 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 					Message: "Error while updating db_user",
 				}, err
 			}
+
+			log.Default().Println("User role updated successfully")
 			return dto.DbUserResponse{
 				Code:    200,
 				Status:  "Success",
@@ -152,6 +153,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 		}
 
 		// No change in role, no update needed
+		log.Default().Println("User already exists with the same role. No update needed.")
 		return dto.DbUserResponse{
 			Code:    200,
 			Status:  "Success",
@@ -180,6 +182,7 @@ func (s *DbRepository) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error)
 		}, err
 	}
 
+	log.Default().Println("User details inserted successfully into db_user")
 	return dto.DbUserResponse{
 		Code:    200,
 		Status:  "Success",
@@ -203,7 +206,7 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 
 	cleanUserName := strings.Trim(req.UserName, "'")
 
-	// Step 1: Find id in db_synchronization
+	//Find id in db_synchronization
 	var dbSync models.DbSynchronization
 	err = orgDb.Table("did.db_synchronization").Where("org_id = ? AND tenant_id = ? AND db_name = ?",
 		req.OrgID, req.TenantID, req.DatabaseName).First(&dbSync).Error
@@ -216,7 +219,7 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 		}, err
 	}
 
-	// Step 2: Find the relevant entry in db_user (for user_id)
+	//Find the relevant entry in db_user (for user_id)
 	var dbUser models.DbUser
 	err = orgDb.Table("did.db_user").Where("org_id = ? AND tenant_id = ? AND user_name = ?",
 		req.OrgID, req.TenantID, cleanUserName).First(&dbUser).Error
@@ -231,12 +234,13 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 
 	cleanPrivilege := strings.Trim(req.Privilege, `"`)
 
-	// Step 3: Check if the privilege already exists for the user
+	//Check if the privilege already exists for the user
 	var dbPrivilege models.DbPrivilege
 	err = orgDb.Table("did.db_privilege").Where("user_id = ? AND db_id = ? AND privilege = ?",
 		dbUser.ID, dbSync.ID, cleanPrivilege).First(&dbPrivilege).Error
 	if err == nil {
 		// Privilege exists, no need to insert
+		log.Default().Println("Privilege already exists. No update needed")
 		return dto.DbPrivilegeResponse{
 			Code:    200,
 			Status:  "Success",
@@ -264,6 +268,7 @@ func (s *DbRepository) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeR
 		}, err
 	}
 
+	log.Default().Println("Privilege inserted successfully")
 	return dto.DbPrivilegeResponse{
 		Code:    200,
 		Status:  "Success",
