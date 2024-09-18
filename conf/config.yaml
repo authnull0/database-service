@@ -15,6 +15,11 @@ prod:
     password: authnull@kloudone@2007
     name: authnull_dev
     schema: did
+  url:
+    authnzurl: http://prod-authnz-svc.authnull-io.svc.cluster.local:6066/authnz/authenticate
+
+  cors:
+    allowOrigin: "*"
 # ------------------------------------------------------
 
 #DEV PROPERTIES
