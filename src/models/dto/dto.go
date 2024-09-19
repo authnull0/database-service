@@ -130,3 +130,10 @@ type DbUserPrivilegeResponse struct {
 	Privilege string `json:"privilege"`
 	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
+type AuthnzResponseDTO struct {
+	Validation bool
+	Code       int
+	Message    string
+	Status     string
+	User       string
+}

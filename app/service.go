@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/authnull0/database-service/src/controller"
+	"github.com/authnull0/database-service/src/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -76,12 +77,20 @@ func setupRoutes(r *gin.Engine) *gin.Engine {
 	r.POST("api/v1/databaseService/dbUser", dbController.DbUser)
 	//API to sync privilege
 	r.POST("api/v1/databaseService/dbPrivilege", dbController.DbPrivilege)
+
+	// //API to list Database
+	// r.POST("api/v1/databaseService/listDatabase", dbController.ListDatabase)
+	// //API to list Database
+	// r.POST("api/v1/databaseService/listUser", dbController.ListUser)
+	// //API to list Privilege
+	// r.POST("api/v1/databaseService/listUserPrivilege", dbController.ListUserPrivilege)
+
 	//API to list Database
-	r.POST("api/v1/databaseService/listDatabase", dbController.ListDatabase)
-	//API to list Database
-	r.POST("api/v1/databaseService/listUser", dbController.ListUser)
-	//API to list Privilege
-	r.POST("api/v1/databaseService/listUserPrivilege", dbController.ListUserPrivilege)
+	r.Use(utils.AuthnzCall()).POST("api/v1/databaseService/listDatabase", dbController.ListDatabase)
+	// //API to list Database
+	r.Use(utils.AuthnzCall()).POST("api/v1/databaseService/listUser", dbController.ListUser)
+	// //API to list Privilege
+	r.Use(utils.AuthnzCall()).POST("api/v1/databaseService/listUserPrivilege", dbController.ListUserPrivilege)
 
 	return r
 }
