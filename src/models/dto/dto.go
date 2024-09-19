@@ -24,6 +24,7 @@ type DbUserRequest struct {
 	DatabaseName string `json:"databaseName"`
 	Status       string `json:"status"`
 	UserName     string `json:"userName"`
+	Privilege    string `json:"privilege"`
 	Host         string `json:"host"`
 	Role         string `json:"role"`
 }

@@ -45,8 +45,9 @@ type DbUser struct {
 	UserName   string `gorm:"column:user_name" json:"username"`
 	Role       string `gorm:"column:role" json:"role"`
 	Host       string `gorm:"column:host" json:"host"`
-	Status     string `gorm:"column:status" json:"status"`
-	CreatedAt  int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	//Privilege  string `gorm:"column:privilege" json:"privilege"`
+	Status    string `gorm:"column:status" json:"status"`
+	CreatedAt int64  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
 func (o *DbUser) TableName() string {

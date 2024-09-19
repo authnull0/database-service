@@ -35,18 +35,19 @@ func (d *DbService) DbUser(req dto.DbUserRequest) (dto.DbUserResponse, error) {
 	}
 	return response, nil
 }
-func (d *DbService) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeResponse, error) {
 
-	response, err := dbRepository.DbPrivilege(req)
-	if err != nil {
-		return dto.DbPrivilegeResponse{
-			Code:    500,
-			Status:  "Internal Server Error",
-			Message: "Error while inserting user privilege",
-		}, nil
-	}
-	return response, nil
-}
+// func (d *DbService) DbPrivilege(req dto.DbPrivilegeRequest) (dto.DbPrivilegeResponse, error) {
+
+//		response, err := dbRepository.DbPrivilege(req)
+//		if err != nil {
+//			return dto.DbPrivilegeResponse{
+//				Code:    500,
+//				Status:  "Internal Server Error",
+//				Message: "Error while inserting user privilege",
+//			}, nil
+//		}
+//		return response, nil
+//	}
 func (d *DbService) ListDatabase(req dto.ListDbRequest) (dto.ListDbResponse, error) {
 
 	response, err := dbRepository.ListDatabase(req)
