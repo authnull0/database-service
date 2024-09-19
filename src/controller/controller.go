@@ -44,21 +44,21 @@ func (s *DbController) DbUser(ctx *gin.Context) {
 
 }
 
-func (s *DbController) DbPrivilege(ctx *gin.Context) {
-	var dbPrivilegeRequest dto.DbPrivilegeRequest
-	if err := ctx.ShouldBindJSON(&dbPrivilegeRequest); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
+// func (s *DbController) DbPrivilege(ctx *gin.Context) {
+// 	var dbPrivilegeRequest dto.DbPrivilegeRequest
+// 	if err := ctx.ShouldBindJSON(&dbPrivilegeRequest); err != nil {
+// 		ctx.JSON(400, gin.H{"error": err.Error()})
+// 		return
+// 	}
 
-	resp, err := dbService.DbPrivilege(dbPrivilegeRequest)
-	if err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	ctx.JSON(200, resp)
+// 	resp, err := dbService.DbPrivilege(dbPrivilegeRequest)
+// 	if err != nil {
+// 		ctx.JSON(500, gin.H{"error": err.Error()})
+// 		return
+// 	}
+// 	ctx.JSON(200, resp)
 
-}
+// }
 
 func (s *DbController) ListDatabase(ctx *gin.Context) {
 	var listDbRequest dto.ListDbRequest
