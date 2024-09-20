@@ -366,7 +366,6 @@ func (s *DbRepository) ListUser(req dto.ListUserRequest) (dto.ListUserResponse, 
 }
 
 func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.ListUserPrivilegeResponse, error) {
-
 	dbName, err := utils.GetOrganizationDatabaseName(req.OrgID)
 	if err != nil {
 		return dto.ListUserPrivilegeResponse{
@@ -445,34 +444,39 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 		})
 	}
 
-	// Apply filters after fetching the results
-	filteredResults := listUserPrivilege
-	for _, filter := range req.Filters {
-		var temp []dto.DbUserPrivilegeResponse
-		for _, item := range filteredResults {
-			switch filter.FilterType {
-			case "Database":
-				if item.DbName == filter.FilterValue {
-					temp = append(temp, item)
-				}
-			case "User":
-				if item.UserName == filter.FilterValue {
-					temp = append(temp, item)
-				}
-			case "Privilege":
-				if item.Privilege == filter.FilterValue {
-					temp = append(temp, item)
-				}
-			case "Status":
-				if item.Status == filter.FilterValue {
-					temp = append(temp, item)
+	// Apply filters only if they are non-empty
+	if len(req.Filters) > 0 && req.Filters[0].FilterType != "" && req.Filters[0].FilterValue != "" {
+		filteredResults := listUserPrivilege
+		for _, filter := range req.Filters {
+			var temp []dto.DbUserPrivilegeResponse
+			for _, item := range filteredResults {
+				switch filter.FilterType {
+				case "Database":
+					if item.DbName == filter.FilterValue {
+						temp = append(temp, item)
+					}
+				case "User":
+					if item.UserName == filter.FilterValue {
+						temp = append(temp, item)
+					}
+				case "Privilege":
+					if item.Privilege == filter.FilterValue {
+						temp = append(temp, item)
+					}
+				case "Status":
+					if item.Status == filter.FilterValue {
+						temp = append(temp, item)
+					}
 				}
 			}
+			filteredResults = temp
 		}
-		filteredResults = temp
+
+		// Replace listUserPrivilege with filteredResults after applying filters
+		listUserPrivilege = filteredResults
 	}
 
-	totalCount := len(filteredResults)
+	totalCount := len(listUserPrivilege)
 	totalPages := (totalCount + req.Limit - 1) / req.Limit // Total pages calculation
 	offset := (req.PageId - 1) * req.Limit
 
@@ -496,7 +500,7 @@ func (s *DbRepository) ListUserPrivilege(req dto.ListUserPrivilegeRequest) (dto.
 	if end > totalCount {
 		end = totalCount
 	}
-	paginatedResult := filteredResults[offset:end]
+	paginatedResult := listUserPrivilege[offset:end]
 
 	return dto.ListUserPrivilegeResponse{
 		Code:       200,
